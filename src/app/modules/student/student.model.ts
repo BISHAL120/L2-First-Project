@@ -1,26 +1,29 @@
 import { Schema, model } from 'mongoose';
 import {
-  guardian,
-  localGuardian,
-  student,
-  userName,
+  TGuardian,
+  TLocalGuardian,
+  TStudent,
+  studentMethod,
+  studentModel,
+  TUserName,
 } from './student.interface';
 
-const userNameSchema = new Schema<userName>({
+const userNameSchema = new Schema<TUserName>({
   firstName: {
     type: String,
-    required: true,
+    required: [true, 'First Name is Required'],
+    trim: true,
   },
   middleName: {
     type: String,
   },
   lastName: {
     type: String,
-    required: true,
+    required: [true, 'Last NAme Is Required'],
   },
 });
 
-const guardianSchema = new Schema<guardian>({
+const guardianSchema = new Schema<TGuardian>({
   fatherName: {
     type: String,
     required: true,
@@ -55,7 +58,7 @@ const guardianSchema = new Schema<guardian>({
   },
 });
 
-const localGuardianSchema = new Schema<localGuardian>({
+const localGuardianSchema = new Schema<TLocalGuardian>({
   name: {
     type: String,
     required: true,
@@ -74,20 +77,84 @@ const localGuardianSchema = new Schema<localGuardian>({
   },
 });
 
-const studentSchema = new Schema<student>({
-  id: { type: String },
-  name: userNameSchema,
-  gender: ['male', 'female'],
-  dateOfBirth: { type: String },
-  email: { type: String, required: true },
-  contactNo: { type: String, required: true },
-  bloodGroup: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'],
-  presentAddress: { type: String, required: true },
-  permanentAddress: { type: String, required: true },
-  guardian: guardianSchema,
-  localGuardian: localGuardianSchema,
-  profileImages: { type: String },
-  isActive: ['active', 'blocked'],
+const studentSchema = new Schema<TStudent, studentModel, studentMethod>(
+  {
+    id: { type: String, required: true, unique: true },
+    user: {
+      type: Schema.Types.ObjectId,
+      required: [true, 'User id is Required'],
+      unique: true,
+      ref: 'userModel',
+    },
+    name: {
+      type: userNameSchema,
+      required: true,
+    },
+    gender: {
+      type: String,
+      enum: {
+        values: ['male', 'female', 'other'],
+        message:
+          "'{VALUE} is not valid. Gender Can Be One Of The Following: 'male', 'female', or 'other'",
+      },
+      required: true,
+    },
+    dateOfBirth: { type: Date },
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+    },
+    contactNo: { type: String, required: true },
+    bloodGroup: {
+      type: String,
+      enum: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'],
+    },
+    presentAddress: { type: String, required: true },
+    permanentAddress: { type: String, required: true },
+    guardian: {
+      type: guardianSchema,
+      required: true,
+    },
+    localGuardian: {
+      type: localGuardianSchema,
+      required: true,
+    },
+    profileImages: { type: String },
+    isDeleted: { type: Boolean, default: false },
+  },
+  {
+    toJSON: {
+      virtuals: true,
+    },
+  },
+);
+
+studentSchema.virtual('fullName').get(function () {
+  return `${this.name.firstName} ${this.name.middleName} ${this.name.lastName}`;
 });
 
-export const StudentModel = model<student>('Student', studentSchema);
+studentSchema.pre('find', function (next) {
+  this.find({ isDeleted: { $ne: true } });
+  next();
+});
+
+studentSchema.pre('aggregate', function (next) {
+  this.pipeline().unshift({ $match: { isDeleted: { $ne: false } } });
+  next();
+});
+
+studentSchema.pre('findOne', function (next) {
+  this.find({ isDeleted: { $ne: true } });
+  next();
+});
+
+studentSchema.methods.isStudentExists = async function (id: string) {
+  const existingUser = await StudentModel.findOne({ id });
+  return existingUser;
+};
+
+export const StudentModel = model<TStudent, studentModel>(
+  'Student',
+  studentSchema,
+);
