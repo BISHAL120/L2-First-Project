@@ -5,6 +5,7 @@ import {
   academicSemisterCode,
   academicSemisterName,
 } from './academicSemister.const';
+import appError from '../../Error/appError';
 
 const academicSemisterSchema = new Schema<TAcadamicSemister>(
   {
@@ -37,6 +38,17 @@ const academicSemisterSchema = new Schema<TAcadamicSemister>(
     timestamps: true,
   },
 );
+
+academicSemisterSchema.pre('save',async function(next) {
+  const isSemisterExist = await AcademicSemister.findOne({
+    name: this.name,
+    year: this.year
+  })
+  if(isSemisterExist){
+    throw new appError(404,'Semister Already Exist')
+  }
+  next();
+})
 
 export const AcademicSemister = model<TAcadamicSemister>(
   'academicSemister',

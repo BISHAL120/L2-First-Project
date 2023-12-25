@@ -7,6 +7,8 @@ import {
   studentModel,
   TUserName,
 } from './student.interface';
+import { AcademicSemister } from '../acadamicSemister/academicSeister.model';
+import { AcademicDepartmentModel } from '../academicDepartment/academicDepartment.model';
 
 const userNameSchema = new Schema<TUserName>({
   firstName: {
@@ -84,7 +86,7 @@ const studentSchema = new Schema<TStudent, studentModel, studentMethod>(
       type: Schema.Types.ObjectId,
       required: [true, 'User id is Required'],
       unique: true,
-      ref: 'userModel',
+      ref: 'user',
     },
     name: {
       type: userNameSchema,
@@ -121,6 +123,14 @@ const studentSchema = new Schema<TStudent, studentModel, studentMethod>(
       required: true,
     },
     profileImages: { type: String },
+    admissionSemister: {
+      type: Schema.Types.ObjectId,
+      ref: AcademicSemister,
+    },
+    academicDepartment: {
+      type: Schema.Types.ObjectId,
+      ref: AcademicDepartmentModel,
+    },
     isDeleted: { type: Boolean, default: false },
   },
   {
@@ -131,7 +141,7 @@ const studentSchema = new Schema<TStudent, studentModel, studentMethod>(
 );
 
 studentSchema.virtual('fullName').get(function () {
-  return `${this.name.firstName} ${this.name.middleName} ${this.name.lastName}`;
+  return `${this?.name?.firstName} ${this?.name?.middleName} ${this?.name?.lastName}`;
 });
 
 studentSchema.pre('find', function (next) {
